@@ -1,5 +1,9 @@
 ﻿using CQRS_Pattern.AppDBContext;
 using CQRS_Pattern.Entity;
+using CQRS_Pattern.Features.CreateStudent;
+using CQRS_Pattern.Features.GetStudentByID;
+using MediatR;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,30 +16,29 @@ namespace CQRS_Pattern.Controllers
     public class StudentController : ControllerBase
     {
         private readonly MyDBContext _context;
+        private readonly ISender _sender;
 
-        public StudentController(MyDBContext context) => _context = context;
+        public StudentController (MyDBContext context, ISender sender) { _context = context; _sender = sender; }
 
-        [HttpGet]
-        public IEnumerable<Student> GetAll()
+        [HttpGet("GetALL")]
+        public IEnumerable<Student> GetAll ()
         {
-            return _context.Students.ToList();
+            return _context.Students.ToList( );
         }
 
         // GET api/<StudentController>/5
-        [HttpGet("{id}")]
-        public async Task<Student?> GetByID(Guid id)
+        [HttpGet]
+        public async Task<Student?> GetByID (Guid ID)
         {
-            return await _context.Students.FirstOrDefaultAsync(x => x.ID == id);
+            return await _sender.Send(new GetStudentByIDCommand(ID));
         }
 
         // POST api/<StudentController>
         [HttpPost]
-        public async Task<Student> CreateStudent([FromBody] Student student)
+        public async Task<ActionResult<Student>> CreateStudent (CreateStudentCommand command)
         {
-            student.ID = Guid.NewGuid();
-            _context.Students.Add(student);
-            await _context.SaveChangesAsync();
-            return student;
+            var Student = await _sender.Send(command);
+            return Ok(Student);
         }
     }
 }
